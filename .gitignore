@@ -1,6 +1,9 @@
 # Build output
 bin/
 obj/
+node_modules/
+dist/
+*.tsbuildinfo
 
 # Visual Studio and VS Code user state
 .vs/
@@ -19,6 +22,8 @@ obj/
 # Local environment and secret files
 appsettings.Local.json
 appsettings.*.Local.json
+.env.local
+*.env.local
 *.pfx
 
 # OS files
