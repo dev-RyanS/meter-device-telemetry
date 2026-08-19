@@ -250,3 +250,7 @@ app.MapGet("/api/readings", async (
 .WithOpenApi();
 
 app.Run();
+
+public partial class Program
+{
+}
