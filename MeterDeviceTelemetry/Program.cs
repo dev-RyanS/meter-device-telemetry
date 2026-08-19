@@ -44,10 +44,7 @@ app.Use(async (context, next) =>
 
     context.Response.Headers["X-Correlation-ID"] = correlationId;
 
-    using (app.Logger.BeginScope(new Dictionary<string, object>
-    {
-        ["CorrelationId"] = correlationId
-    }))
+    using (app.Logger.BeginScope("CorrelationId: {CorrelationId}", correlationId))
     {
         await next();
     }
