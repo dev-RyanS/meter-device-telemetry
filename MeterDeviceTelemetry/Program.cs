@@ -228,6 +228,11 @@ app.MapGet("/api/readings", async (
         .Skip((requestedPage - 1) * requestedPageSize)
         .Take(requestedPageSize)
         .ToListAsync();
+    var readingResults = readings.Select(reading => new
+    {
+        reading,
+        status = MeterReadingStatusCalculator.Calculate(reading, batteryLowThreshold)
+    });
 
     logger.LogInformation(
         "Queried meter readings for tenant {TenantId}, returned {ReadingCount} of {TotalCount}",
@@ -237,7 +242,7 @@ app.MapGet("/api/readings", async (
 
     return Results.Ok(new
     {
-        items = readings,
+        items = readingResults,
         page = requestedPage,
         pageSize = requestedPageSize,
         totalCount

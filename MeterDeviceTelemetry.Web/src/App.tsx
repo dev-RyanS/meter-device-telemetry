@@ -13,10 +13,18 @@ type Reading = {
 };
 
 type ReadingsResponse = {
-  items: Reading[];
+  items: ReadingResult[];
   page: number;
   pageSize: number;
   totalCount: number;
+};
+
+type ReadingResult = {
+  reading: Reading;
+  status: {
+    batteryLow: boolean;
+    batteryThreshold: number;
+  };
 };
 
 type ReadingForm = {
@@ -56,7 +64,7 @@ function App() {
   const [tenantId, setTenantId] = useState('acme');
   const [deviceId, setDeviceId] = useState('');
   const [type, setType] = useState('');
-  const [readings, setReadings] = useState<Reading[]>([]);
+  const [readings, setReadings] = useState<ReadingResult[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -203,6 +211,59 @@ function App() {
         </form>
       </section>
 
+      <section className="results-section" aria-live="polite">
+        <div className="results-heading">
+          <div>
+            <p className="eyebrow">Latest window</p>
+            <h2>{totalCount} readings found</h2>
+          </div>
+          <span className="sort-note">Newest first</span>
+        </div>
+
+        {isLoading && <p className="message">Loading readings...</p>}
+        {error && <p className="message error-message">{error}</p>}
+
+        {!isLoading && !error && readings.length === 0 && (
+          <p className="message">No readings match these filters.</p>
+        )}
+
+        {!isLoading && !error && readings.length > 0 && (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Recorded</th>
+                  <th>Device</th>
+                  <th>Type</th>
+                  <th>Value</th>
+                  <th>Battery</th>
+                  <th>Signal</th>
+                  <th>External ID</th>
+                </tr>
+              </thead>
+              <tbody>
+                {readings.map(({ reading, status }) => (
+                  <tr key={`${reading.tenantId}-${reading.externalId}`}>
+                    <td>{new Date(reading.recordedAt).toLocaleString()}</td>
+                    <td className="strong-cell">{reading.deviceId}</td>
+                    <td><span className="type-tag">{reading.type}</span></td>
+                    <td>{reading.value} {reading.unit}</td>
+                    <td>
+                      {reading.battery}%
+                      {status.batteryLow && <span className="battery-warning">LOW</span>}
+                    </td>
+                    <td>{reading.signal} dBm</td>
+                    <td className="muted-cell">{reading.externalId}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      {successMessage && <p className="message success-message">{successMessage}</p>}
+
       <section className="submit-panel" aria-label="Submit a reading">
         <div className="panel-heading">
           <div>
@@ -250,56 +311,6 @@ function App() {
           </label>
           <button type="submit" disabled={isLoading}>Submit reading</button>
         </form>
-      </section>
-
-      {successMessage && <p className="message success-message">{successMessage}</p>}
-
-      <section className="results-section" aria-live="polite">
-        <div className="results-heading">
-          <div>
-            <p className="eyebrow">Latest window</p>
-            <h2>{totalCount} readings found</h2>
-          </div>
-          <span className="sort-note">Newest first</span>
-        </div>
-
-        {isLoading && <p className="message">Loading readings...</p>}
-        {error && <p className="message error-message">{error}</p>}
-
-        {!isLoading && !error && readings.length === 0 && (
-          <p className="message">No readings match these filters.</p>
-        )}
-
-        {!isLoading && !error && readings.length > 0 && (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Recorded</th>
-                  <th>Device</th>
-                  <th>Type</th>
-                  <th>Value</th>
-                  <th>Battery</th>
-                  <th>Signal</th>
-                  <th>External ID</th>
-                </tr>
-              </thead>
-              <tbody>
-                {readings.map((reading) => (
-                  <tr key={`${reading.tenantId}-${reading.externalId}`}>
-                    <td>{new Date(reading.recordedAt).toLocaleString()}</td>
-                    <td className="strong-cell">{reading.deviceId}</td>
-                    <td><span className="type-tag">{reading.type}</span></td>
-                    <td>{reading.value} {reading.unit}</td>
-                    <td>{reading.battery}%</td>
-                    <td>{reading.signal} dBm</td>
-                    <td className="muted-cell">{reading.externalId}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
       </section>
     </main>
   );

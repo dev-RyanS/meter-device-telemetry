@@ -96,7 +96,7 @@ public sealed class MeterDeviceTelemetryApiTests : IDisposable
             type = "water_level",
             value = 1.25,
             unit = "m",
-            battery = 61,
+            battery = 19,
             signal = -84,
             recordedAt = "2025-01-10T10:20:00Z",
             externalId = "query-002"
@@ -128,8 +128,10 @@ public sealed class MeterDeviceTelemetryApiTests : IDisposable
         Assert.NotNull(body);
         Assert.Equal(2, body!.TotalCount);
         Assert.Equal(2, body.Items.Count);
-        Assert.Equal("query-002", body.Items[0].ExternalId);
-        Assert.Equal("query-001", body.Items[1].ExternalId);
+        Assert.Equal("query-002", body.Items[0].Reading.ExternalId);
+        Assert.True(body.Items[0].Status.BatteryLow);
+        Assert.Equal("query-001", body.Items[1].Reading.ExternalId);
+        Assert.False(body.Items[1].Status.BatteryLow);
     }
 
     public void Dispose()
@@ -163,10 +165,14 @@ public sealed class MeterDeviceTelemetryApiTests : IDisposable
         int BatteryThreshold);
 
     private sealed record GetReadingsResponse(
-        List<QueryReadingResponse> Items,
+        List<QueryReadingResult> Items,
         int Page,
         int PageSize,
         int TotalCount);
+
+    private sealed record QueryReadingResult(
+        QueryReadingResponse Reading,
+        StatusResponse Status);
 
     private sealed record QueryReadingResponse(
         string ExternalId,

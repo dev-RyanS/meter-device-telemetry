@@ -229,6 +229,19 @@ td {
   padding: 0.28rem 0.45rem;
 }
 
+.battery-warning {
+  background: #f8d7c8;
+  border-radius: 4px;
+  color: #9f3b28;
+  display: inline-block;
+  font-family: 'Trebuchet MS', sans-serif;
+  font-size: 0.66rem;
+  font-weight: 700;
+  margin-left: 0.45rem;
+  padding: 0.2rem 0.32rem;
+  vertical-align: 0.08rem;
+}
+
 .message {
   border: 1px solid #c9d6de;
   color: #486581;
