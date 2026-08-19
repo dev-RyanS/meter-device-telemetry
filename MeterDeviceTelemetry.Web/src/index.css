@@ -39,6 +39,11 @@ button:hover {
   background: #b84731;
 }
 
+button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
 .page-shell {
   margin: 0 auto;
   max-width: 1280px;
@@ -121,6 +126,29 @@ h2 {
   display: grid;
   gap: 1rem;
   grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+}
+
+.submit-panel {
+  border-top: 1px solid #c9d6de;
+  margin-bottom: 3rem;
+  padding-top: 1.8rem;
+}
+
+.panel-heading {
+  align-items: end;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 1.2rem;
+}
+
+.reading-form {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.reading-form button {
+  align-self: end;
 }
 
 label {
@@ -214,6 +242,12 @@ td {
   color: #9f3b28;
 }
 
+.success-message {
+  border-color: #4c9f70;
+  color: #216e4b;
+  margin-bottom: 2rem;
+}
+
 @media (max-width: 760px) {
   .page-shell {
     padding-top: 2rem;
@@ -229,6 +263,19 @@ td {
   }
 
   .filter-panel form {
+    grid-template-columns: 1fr;
+  }
+
+  .panel-heading {
+    display: block;
+  }
+
+  .panel-heading .sort-note {
+    display: inline-block;
+    margin-top: 0.8rem;
+  }
+
+  .reading-form {
     grid-template-columns: 1fr;
   }
 
