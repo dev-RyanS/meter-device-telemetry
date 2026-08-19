@@ -1,0 +1,25 @@
+# Build output
+bin/
+obj/
+
+# Visual Studio and VS Code user state
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vscode/launch.json
+.vscode/tasks.json
+
+# Local database files
+*.db
+*.db-shm
+*.db-wal
+
+# Local environment and secret files
+appsettings.Local.json
+appsettings.*.Local.json
+*.pfx
+
+# OS files
+.DS_Store
