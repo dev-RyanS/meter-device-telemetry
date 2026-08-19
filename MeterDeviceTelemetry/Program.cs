@@ -33,6 +33,10 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.MapGet("/health", () => Results.Ok(new { status = "ok" }))
+    .WithName("Health")
+    .WithOpenApi();
+
 var batteryLowThreshold = builder.Configuration.GetValue("Telemetry:BatteryLowThreshold", 20);
 
 app.MapPost("/api/readings", async (
