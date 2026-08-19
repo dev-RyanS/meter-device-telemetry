@@ -73,6 +73,65 @@ public sealed class MeterDeviceTelemetryApiTests : IDisposable
         Assert.Equal(20, body.Status.BatteryThreshold);
     }
 
+    [Fact]
+    public async Task GetReadings_FiltersByTenantAndDeviceAndReturnsNewestFirst()
+    {
+        var firstReading = new
+        {
+            tenantId = "acme",
+            deviceId = "dev-123",
+            type = "water_level",
+            value = 1.23,
+            unit = "m",
+            battery = 62,
+            signal = -85,
+            recordedAt = "2025-01-10T10:15:00Z",
+            externalId = "query-001"
+        };
+
+        var secondReading = new
+        {
+            tenantId = "acme",
+            deviceId = "dev-123",
+            type = "water_level",
+            value = 1.25,
+            unit = "m",
+            battery = 61,
+            signal = -84,
+            recordedAt = "2025-01-10T10:20:00Z",
+            externalId = "query-002"
+        };
+
+        var otherDeviceReading = new
+        {
+            tenantId = "acme",
+            deviceId = "dev-999",
+            type = "water_level",
+            value = 1.50,
+            unit = "m",
+            battery = 70,
+            signal = -80,
+            recordedAt = "2025-01-10T10:25:00Z",
+            externalId = "query-003"
+        };
+
+        Assert.Equal(HttpStatusCode.Created, (await client.PostAsJsonAsync("/api/readings", firstReading)).StatusCode);
+        Assert.Equal(HttpStatusCode.Created, (await client.PostAsJsonAsync("/api/readings", secondReading)).StatusCode);
+        Assert.Equal(HttpStatusCode.Created, (await client.PostAsJsonAsync("/api/readings", otherDeviceReading)).StatusCode);
+
+        var response = await client.GetAsync("/api/readings?tenantId=acme&deviceId=dev-123");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var body = await response.Content.ReadFromJsonAsync<GetReadingsResponse>();
+
+        Assert.NotNull(body);
+        Assert.Equal(2, body!.TotalCount);
+        Assert.Equal(2, body.Items.Count);
+        Assert.Equal("query-002", body.Items[0].ExternalId);
+        Assert.Equal("query-001", body.Items[1].ExternalId);
+    }
+
     public void Dispose()
     {
         client.Dispose();
@@ -102,4 +161,14 @@ public sealed class MeterDeviceTelemetryApiTests : IDisposable
     private sealed record StatusResponse(
         bool BatteryLow,
         int BatteryThreshold);
+
+    private sealed record GetReadingsResponse(
+        List<QueryReadingResponse> Items,
+        int Page,
+        int PageSize,
+        int TotalCount);
+
+    private sealed record QueryReadingResponse(
+        string ExternalId,
+        string DeviceId);
 }

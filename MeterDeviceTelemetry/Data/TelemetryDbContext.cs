@@ -33,5 +33,10 @@ public sealed class TelemetryDbContext : DbContext
         reading.Property(item => item.ExternalId)
             .IsRequired()
             .HasMaxLength(100);
+
+        reading.Property(item => item.RecordedAt)
+            .HasConversion(
+                value => value.UtcDateTime,
+                value => new DateTimeOffset(DateTime.SpecifyKind(value, DateTimeKind.Utc)));
     }
 }
