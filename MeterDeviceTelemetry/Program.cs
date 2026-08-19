@@ -143,4 +143,86 @@ app.MapPost("/api/readings", async (
 .WithName("CreateReading")
 .WithOpenApi();
 
+app.MapGet("/api/readings", async (
+    string? tenantId,
+    string? deviceId,
+    string? type,
+    DateTimeOffset? from,
+    DateTimeOffset? to,
+    int? page,
+    int? pageSize,
+    TelemetryDbContext database,
+    ILogger<Program> logger) =>
+{
+    if (string.IsNullOrWhiteSpace(tenantId))
+    {
+        return Results.BadRequest(new { errors = new[] { "tenantId is required." } });
+    }
+
+    var requestedPage = page ?? 1;
+    var requestedPageSize = pageSize ?? 20;
+
+    if (requestedPage < 1)
+    {
+        return Results.BadRequest(new { errors = new[] { "page must be at least 1." } });
+    }
+
+    if (requestedPageSize is < 1 or > 100)
+    {
+        return Results.BadRequest(new { errors = new[] { "pageSize must be between 1 and 100." } });
+    }
+
+    if (from > to)
+    {
+        return Results.BadRequest(new { errors = new[] { "from must be earlier than or equal to to." } });
+    }
+
+    var query = database.Readings
+        .AsNoTracking()
+        .Where(reading => reading.TenantId == tenantId);
+
+    if (!string.IsNullOrWhiteSpace(deviceId))
+    {
+        query = query.Where(reading => reading.DeviceId == deviceId);
+    }
+
+    if (!string.IsNullOrWhiteSpace(type))
+    {
+        query = query.Where(reading => reading.Type == type);
+    }
+
+    if (from is not null)
+    {
+        query = query.Where(reading => reading.RecordedAt >= from.Value);
+    }
+
+    if (to is not null)
+    {
+        query = query.Where(reading => reading.RecordedAt <= to.Value);
+    }
+
+    var totalCount = await query.CountAsync();
+    var readings = await query
+        .OrderByDescending(reading => reading.RecordedAt)
+        .Skip((requestedPage - 1) * requestedPageSize)
+        .Take(requestedPageSize)
+        .ToListAsync();
+
+    logger.LogInformation(
+        "Queried meter readings for tenant {TenantId}, returned {ReadingCount} of {TotalCount}",
+        tenantId,
+        readings.Count,
+        totalCount);
+
+    return Results.Ok(new
+    {
+        items = readings,
+        page = requestedPage,
+        pageSize = requestedPageSize,
+        totalCount
+    });
+})
+.WithName("GetReadings")
+.WithOpenApi();
+
 app.Run();
