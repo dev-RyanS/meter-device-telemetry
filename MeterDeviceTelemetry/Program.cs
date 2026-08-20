@@ -107,7 +107,9 @@ app.MapPost("/api/readings", async (
         reading.DeviceId,
         reading.Type);
 
-    return Results.Created("/api/readings", new { reading, status });
+    var response = MeterReadingResponseMapper.Map(reading, status);
+
+    return Results.Created("/api/readings", response);
 })
 .WithName("CreateReading")
 .WithOpenApi();
@@ -176,11 +178,11 @@ app.MapGet("/api/readings", async (
         .Skip((requestedPage - 1) * requestedPageSize)
         .Take(requestedPageSize)
         .ToListAsync();
-    var readingResults = readings.Select(reading => new
-    {
-        reading,
-        status = MeterReadingStatusCalculator.Calculate(reading, batteryLowThreshold)
-    });
+    var readingResults = readings
+        .Select(reading => MeterReadingResponseMapper.Map(
+            reading,
+            MeterReadingStatusCalculator.Calculate(reading, batteryLowThreshold)))
+        .ToList();
 
     logger.LogInformation(
         "Queried meter readings for tenant {TenantId}, returned {ReadingCount} of {TotalCount}",
@@ -188,13 +190,11 @@ app.MapGet("/api/readings", async (
         readings.Count,
         totalCount);
 
-    return Results.Ok(new
-    {
-        items = readingResults,
-        page = requestedPage,
-        pageSize = requestedPageSize,
-        totalCount
-    });
+    return Results.Ok(new PagedMeterReadingsResponse(
+        readingResults,
+        requestedPage,
+        requestedPageSize,
+        totalCount));
 })
 .WithName("GetReadings")
 .WithOpenApi();

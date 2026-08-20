@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using MeterDeviceTelemetry.Contracts;
 using MeterDeviceTelemetry.Data;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -64,7 +65,7 @@ public sealed class MeterDeviceTelemetryApiTests : IDisposable
             "test-correlation-id",
             response.Headers.GetValues("X-Correlation-ID").Single());
 
-        var body = await response.Content.ReadFromJsonAsync<CreateReadingResponse>();
+        var body = await response.Content.ReadFromJsonAsync<MeterReadingWithStatusResponse>();
 
         Assert.NotNull(body);
         Assert.Equal("acme", body!.Reading.TenantId);
@@ -141,7 +142,7 @@ public sealed class MeterDeviceTelemetryApiTests : IDisposable
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var body = await response.Content.ReadFromJsonAsync<GetReadingsResponse>();
+        var body = await response.Content.ReadFromJsonAsync<PagedMeterReadingsResponse>();
 
         Assert.NotNull(body);
         Assert.Equal(2, body!.TotalCount);
@@ -170,29 +171,4 @@ public sealed class MeterDeviceTelemetryApiTests : IDisposable
         }
     }
 
-    private sealed record CreateReadingResponse(
-        ReadingResponse Reading,
-        StatusResponse Status);
-
-    private sealed record ReadingResponse(
-        string TenantId,
-        string DeviceId);
-
-    private sealed record StatusResponse(
-        bool BatteryLow,
-        int BatteryThreshold);
-
-    private sealed record GetReadingsResponse(
-        List<QueryReadingResult> Items,
-        int Page,
-        int PageSize,
-        int TotalCount);
-
-    private sealed record QueryReadingResult(
-        QueryReadingResponse Reading,
-        StatusResponse Status);
-
-    private sealed record QueryReadingResponse(
-        string ExternalId,
-        string DeviceId);
 }
