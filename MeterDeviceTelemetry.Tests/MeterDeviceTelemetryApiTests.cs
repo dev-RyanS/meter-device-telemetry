@@ -93,6 +93,72 @@ public sealed class MeterDeviceTelemetryApiTests : IDisposable
     }
 
     [Fact]
+    public async Task PostReading_WhenExternalIdIsDuplicatedWithinTenant_ReturnsConflict()
+    {
+        var reading = new
+        {
+            tenantId = "acme",
+            deviceId = "dev-123",
+            type = "water_level",
+            value = 1.23,
+            unit = "m",
+            battery = 62,
+            signal = -85,
+            recordedAt = "2025-01-10T10:15:00Z",
+            externalId = "duplicate-001"
+        };
+
+        Assert.Equal(HttpStatusCode.Created, (await client.PostAsJsonAsync("/api/readings", reading)).StatusCode);
+
+        var response = await client.PostAsJsonAsync("/api/readings", reading);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+
+        var body = await response.Content.ReadFromJsonAsync<ConflictResponse>();
+
+        Assert.NotNull(body);
+        Assert.Equal(
+            "A reading with this external ID already exists for this tenant.",
+            body!.Error);
+    }
+
+    [Fact]
+    public async Task PostReading_WhenExternalIdIsReusedByAnotherTenant_ReturnsCreated()
+    {
+        var reading = new
+        {
+            tenantId = "acme",
+            deviceId = "dev-123",
+            type = "water_level",
+            value = 1.23,
+            unit = "m",
+            battery = 62,
+            signal = -85,
+            recordedAt = "2025-01-10T10:15:00Z",
+            externalId = "shared-001"
+        };
+
+        Assert.Equal(HttpStatusCode.Created, (await client.PostAsJsonAsync("/api/readings", reading)).StatusCode);
+
+        var otherTenantReading = new
+        {
+            tenantId = "globex",
+            deviceId = reading.deviceId,
+            type = reading.type,
+            value = reading.value,
+            unit = reading.unit,
+            battery = reading.battery,
+            signal = reading.signal,
+            recordedAt = reading.recordedAt,
+            externalId = reading.externalId
+        };
+
+        var response = await client.PostAsJsonAsync("/api/readings", otherTenantReading);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
+    [Fact]
     public async Task GetReadings_FiltersByTenantAndDeviceAndReturnsNewestFirst()
     {
         var firstReading = new
@@ -171,4 +237,5 @@ public sealed class MeterDeviceTelemetryApiTests : IDisposable
         }
     }
 
+    private sealed record ConflictResponse(string Error);
 }
