@@ -61,68 +61,16 @@ app.MapPost("/api/readings", async (
     TelemetryDbContext database,
     ILogger<Program> logger) =>
 {
-    var missingFields = new List<string>();
-
-    if (request.TenantId is null)
-    {
-        missingFields.Add("TenantId is required.");
-    }
-
-    if (request.DeviceId is null)
-    {
-        missingFields.Add("DeviceId is required.");
-    }
-
-    if (request.Type is null)
-    {
-        missingFields.Add("Type is required.");
-    }
-
-    if (request.Value is null)
-    {
-        missingFields.Add("Value is required.");
-    }
-
-    if (request.Unit is null)
-    {
-        missingFields.Add("Unit is required.");
-    }
-
-    if (request.Battery is null)
-    {
-        missingFields.Add("Battery is required.");
-    }
-
-    if (request.Signal is null)
-    {
-        missingFields.Add("Signal is required.");
-    }
-
-    if (request.RecordedAt is null)
-    {
-        missingFields.Add("RecordedAt is required.");
-    }
-
-    if (request.ExternalId is null)
-    {
-        missingFields.Add("ExternalId is required.");
-    }
-
-    if (missingFields.Count > 0)
-    {
-        return Results.BadRequest(new { errors = missingFields });
-    }
-
     var reading = new MeterReading(
-        request.TenantId!,
-        request.DeviceId!,
-        request.Type!,
-        request.Value!.Value,
-        request.Unit!,
-        request.Battery!.Value,
-        request.Signal!.Value,
-        request.RecordedAt!.Value,
-        request.ExternalId!);
+        request.TenantId,
+        request.DeviceId,
+        request.Type,
+        request.Value,
+        request.Unit,
+        request.Battery,
+        request.Signal,
+        request.RecordedAt,
+        request.ExternalId);
 
     var validationErrors = MeterReadingValidator.Validate(reading);
     if (validationErrors.Count > 0)

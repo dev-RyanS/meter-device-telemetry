@@ -74,6 +74,24 @@ public sealed class MeterDeviceTelemetryApiTests : IDisposable
     }
 
     [Fact]
+    public async Task PostReading_WhenRequiredFieldIsMissing_ReturnsBadRequest()
+    {
+        var response = await client.PostAsJsonAsync("/api/readings", new
+        {
+            tenantId = "acme",
+            deviceId = "dev-123",
+            type = "water_level",
+            value = 1.23,
+            unit = "m",
+            signal = -85,
+            recordedAt = "2025-01-10T10:15:00Z",
+            externalId = "missing-battery"
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task GetReadings_FiltersByTenantAndDeviceAndReturnsNewestFirst()
     {
         var firstReading = new
