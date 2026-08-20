@@ -1,8 +1,10 @@
 using MeterDeviceTelemetry.Application;
 using MeterDeviceTelemetry.Contracts;
+using MeterDeviceTelemetry.Configuration;
 using MeterDeviceTelemetry.Data;
 using MeterDeviceTelemetry.Domain;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,12 +18,18 @@ var connectionString = builder.Configuration.GetConnectionString("TelemetryDatab
 builder.Services.AddDbContext<TelemetryDbContext>(options =>
     options.UseSqlite(connectionString));
 
-var batteryLowThreshold = builder.Configuration.GetValue("Telemetry:BatteryLowThreshold", 20);
+builder.Services.AddOptions<TelemetryOptions>()
+    .Bind(builder.Configuration.GetSection(TelemetryOptions.SectionName))
+    .Validate(
+        options => options.BatteryLowThreshold is >= 0 and <= 100,
+        "Telemetry:BatteryLowThreshold must be between 0 and 100.")
+    .ValidateOnStart();
+
 builder.Services.AddScoped<MeterReadingService>(services =>
     new MeterReadingService(
         services.GetRequiredService<TelemetryDbContext>(),
         services.GetRequiredService<ILogger<MeterReadingService>>(),
-        batteryLowThreshold));
+        services.GetRequiredService<IOptions<TelemetryOptions>>().Value.BatteryLowThreshold));
 
 var app = builder.Build();
 
@@ -95,7 +103,8 @@ app.MapGet("/api/readings", async (
     int? page,
     int? pageSize,
     TelemetryDbContext database,
-    ILogger<Program> logger) =>
+    ILogger<Program> logger,
+    IOptions<TelemetryOptions> telemetryOptions) =>
 {
     if (string.IsNullOrWhiteSpace(tenantId))
     {
@@ -119,6 +128,8 @@ app.MapGet("/api/readings", async (
     {
         return Results.BadRequest(new { errors = new[] { "from must be earlier than or equal to to." } });
     }
+
+    var batteryLowThreshold = telemetryOptions.Value.BatteryLowThreshold;
 
     var query = database.Readings
         .AsNoTracking()
