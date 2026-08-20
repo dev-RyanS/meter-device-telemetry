@@ -1,7 +1,7 @@
+using MeterDeviceTelemetry.Application;
 using MeterDeviceTelemetry.Contracts;
 using MeterDeviceTelemetry.Data;
 using MeterDeviceTelemetry.Domain;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -15,6 +15,13 @@ var connectionString = builder.Configuration.GetConnectionString("TelemetryDatab
     ?? "Data Source=telemetry.db";
 builder.Services.AddDbContext<TelemetryDbContext>(options =>
     options.UseSqlite(connectionString));
+
+var batteryLowThreshold = builder.Configuration.GetValue("Telemetry:BatteryLowThreshold", 20);
+builder.Services.AddScoped<MeterReadingService>(services =>
+    new MeterReadingService(
+        services.GetRequiredService<TelemetryDbContext>(),
+        services.GetRequiredService<ILogger<MeterReadingService>>(),
+        batteryLowThreshold));
 
 var app = builder.Build();
 
@@ -54,62 +61,27 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok" }))
     .WithName("Health")
     .WithOpenApi();
 
-var batteryLowThreshold = builder.Configuration.GetValue("Telemetry:BatteryLowThreshold", 20);
-
 app.MapPost("/api/readings", async (
     MeterReadingRequest request,
-    TelemetryDbContext database,
-    ILogger<Program> logger) =>
+    MeterReadingService readingService) =>
 {
-    var reading = new MeterReading(
-        request.TenantId,
-        request.DeviceId,
-        request.Type,
-        request.Value,
-        request.Unit,
-        request.Battery,
-        request.Signal,
-        request.RecordedAt,
-        request.ExternalId);
+    var result = await readingService.CreateAsync(request);
 
-    var validationErrors = MeterReadingValidator.Validate(reading);
-    if (validationErrors.Count > 0)
+    return result switch
     {
-        return Results.BadRequest(new { errors = validationErrors });
-    }
-
-    var status = MeterReadingStatusCalculator.Calculate(reading, batteryLowThreshold);
-
-    database.Readings.Add(reading);
-
-    try
-    {
-        await database.SaveChangesAsync();
-    }
-    catch (DbUpdateException exception) when (
-        exception.InnerException is SqliteException sqliteException &&
-        sqliteException.SqliteErrorCode == 19)
-    {
-        logger.LogInformation(
-            "Duplicate meter reading rejected for tenant {TenantId} and external ID {ExternalId}",
-            reading.TenantId,
-            reading.ExternalId);
-
-        return Results.Conflict(new
-        {
-            error = "A reading with this external ID already exists for this tenant."
-        });
-    }
-
-    logger.LogInformation(
-        "Stored meter reading for tenant {TenantId}, device {DeviceId}, type {Type}",
-        reading.TenantId,
-        reading.DeviceId,
-        reading.Type);
-
-    var response = MeterReadingResponseMapper.Map(reading, status);
-
-    return Results.Created("/api/readings", response);
+        MeterReadingCreationResult.Invalid invalid =>
+            Results.BadRequest(new { errors = invalid.Errors }),
+        MeterReadingCreationResult.Duplicate =>
+            Results.Conflict(new
+            {
+                error = "A reading with this external ID already exists for this tenant."
+            }),
+        MeterReadingCreationResult.Created created =>
+            Results.Created(
+                "/api/readings",
+                MeterReadingResponseMapper.Map(created.Reading, created.Status)),
+        _ => throw new InvalidOperationException("Unknown meter reading creation result.")
+    };
 })
 .WithName("CreateReading")
 .WithOpenApi();
